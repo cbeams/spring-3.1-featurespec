@@ -17,10 +17,17 @@
 package com.bank.config.code;
 
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
+import org.aopalliance.aop.Advice;
+import org.junit.Before;
 import org.junit.Test;
+import org.springframework.aop.Advisor;
+import org.springframework.aop.framework.Advised;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.transaction.interceptor.TransactionInterceptor;
 
 import com.bank.domain.InsufficientFundsException;
 import com.bank.repository.AccountRepository;
@@ -28,17 +35,22 @@ import com.bank.service.TransferService;
 
 public class IntegrationTests {
 
-	@Test
-	public void transferTenDollars() throws InsufficientFundsException {
+	private TransferService transferService;
+	private AccountRepository accountRepository;
 
+	@Before
+	public void setUp() {
 		AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
 		ctx.getEnvironment().setDefaultProfiles("dev");
 		ctx.register(TransferServiceConfig.class, StandaloneDataConfig.class, JndiDataConfig.class);
 		ctx.refresh();
 
-		TransferService transferService = ctx.getBean(TransferService.class);
-		AccountRepository accountRepository = ctx.getBean(AccountRepository.class);
+		transferService = ctx.getBean(TransferService.class);
+		accountRepository = ctx.getBean(AccountRepository.class);
+	}
 
+	@Test
+	public void transferTenDollars() throws InsufficientFundsException {
 		assertThat(accountRepository.findById("A123").getBalance(), equalTo(100.00));
 		assertThat(accountRepository.findById("C456").getBalance(), equalTo(0.00));
 
@@ -46,6 +58,24 @@ public class IntegrationTests {
 
 		assertThat(accountRepository.findById("A123").getBalance(), equalTo(90.00));
 		assertThat(accountRepository.findById("C456").getBalance(), equalTo(10.00));
+	}
+
+	@Test
+	public void transactionalAdviceIsApplied() {
+		assertThat("expected transferService to be a Spring AOP proxy",
+				transferService, instanceOf(Advised.class));
+
+		boolean hasTxAdvice = false;
+		for (Advisor advisor : ((Advised)transferService).getAdvisors()) {
+			Advice advice = advisor.getAdvice();
+			if (advice instanceof TransactionInterceptor) {
+				hasTxAdvice = true;
+				break;
+			}
+		}
+
+		assertThat("expected transferService to be advised with a TransactionInterceptor",
+				hasTxAdvice, is(true));
 	}
 
 }

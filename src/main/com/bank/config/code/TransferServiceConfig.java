@@ -19,6 +19,12 @@ package com.bank.config.code;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Feature;
+import org.springframework.context.annotation.FeatureConfiguration;
+import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.config.TxAnnotationDriven;
 
 import com.bank.repository.AccountRepository;
 import com.bank.repository.internal.JdbcAccountRepository;
@@ -28,6 +34,7 @@ import com.bank.service.internal.DefaultTransferService;
 import com.bank.service.internal.ZeroFeePolicy;
 
 @Configuration
+@Import(TxFeature.class)
 public class TransferServiceConfig {
 
 	@Autowired DataConfig dataConfig;
@@ -45,6 +52,20 @@ public class TransferServiceConfig {
 	@Bean
 	public FeePolicy feePolicy() {
 		return new ZeroFeePolicy();
+	}
+
+	@Bean
+	public PlatformTransactionManager txManager() {
+		return new DataSourceTransactionManager(dataConfig.dataSource());
+	}
+}
+
+@FeatureConfiguration
+class TxFeature {
+
+	@Feature
+	public TxAnnotationDriven txAnnotationDriven(PlatformTransactionManager txManager) {
+		return new TxAnnotationDriven(txManager);
 	}
 
 }
