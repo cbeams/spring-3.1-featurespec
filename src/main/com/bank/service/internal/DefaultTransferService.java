@@ -18,8 +18,6 @@ package com.bank.service.internal;
 
 import static java.lang.String.format;
 
-import org.springframework.transaction.annotation.Transactional;
-
 import com.bank.domain.Account;
 import com.bank.domain.InsufficientFundsException;
 import com.bank.domain.TransferReceipt;
@@ -44,7 +42,6 @@ public class DefaultTransferService implements TransferService {
 	}
 
 	@Override
-	@Transactional
 	public TransferReceipt transfer(double amount, String srcAcctId, String dstAcctId) throws InsufficientFundsException {
 		if (amount < minimumTransferAmount)
 			throw new IllegalArgumentException(
